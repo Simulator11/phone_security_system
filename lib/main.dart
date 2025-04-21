@@ -4,7 +4,7 @@ import 'screens/home_screen.dart';
 void main() {
   runApp(AntTheftApp());
 }
-//first commit
+//"Initial commit of phone_security_system project"
 
 class AntTheftApp extends StatelessWidget {
   @override
