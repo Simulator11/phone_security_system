@@ -2,9 +2,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/motion_service.dart';
 import '../services/alarm_service.dart';
+import '../services/flashlight_service.dart';
 import '../models/detection_mode.dart';
 
 class HomeScreen extends StatefulWidget {
+  const HomeScreen({super.key});
+
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
@@ -33,7 +36,7 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isCountingDown = false;
           _isArmed = true;
-          _isMotionDetected = true;
+          _isMotionDetected = false;
         });
 
         MotionService.startDetection(
@@ -48,23 +51,28 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onMotionDetected() {
     if (_isArmed) {
       AlarmService.triggerAlarm();
+      FlashlightService.toggleFlashlight(true);
       setState(() {
         _isMotionDetected = true;
       });
+      print("⚠️ Motion Detected — Alarm and Flashlight Activated.");
     }
   }
 
   void _onMotionStopped() {
     if (_isArmed) {
+      AlarmService.stopAlarm();
+      FlashlightService.toggleFlashlight(false);
       setState(() {
         _isMotionDetected = false;
       });
-      print("⚠️ Motion Stopped — Camera Capture Paused.");
+      print("⚠️ Motion Stopped — Alarm and Flashlight Deactivated.");
     }
   }
 
   void _deactivateSystem() {
     AlarmService.stopAlarm();
+    FlashlightService.toggleFlashlight(false);
     MotionService.stopDetection();
 
     _countdownTimer?.cancel();
@@ -80,6 +88,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _countdownTimer?.cancel();
     MotionService.stopDetection();
+    FlashlightService.toggleFlashlight(false);
     super.dispose();
   }
 
@@ -89,92 +98,214 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Phone Security System'),
+        title: Text('Phone Security System',
+            style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 22)),
         centerTitle: true,
+        backgroundColor: Colors.blue[700],
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            bottom: Radius.circular(20),
+          ),
+        ),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Select Mode:', style: TextStyle(fontSize: 20)),
-            ListTile(
-              title: Text('Rest Mode'),
-              leading: Radio(
-                value: DetectionMode.rest,
-                groupValue: _mode,
-                onChanged: isActivationDisabled ? null : (DetectionMode? value) {
-                  if (value != null) {
-                    setState(() => _mode = value);
-                  }
-                },
-              ),
-            ),
-            ListTile(
-              title: Text('Pocket Mode'),
-              leading: Radio(
-                value: DetectionMode.pocket,
-                groupValue: _mode,
-                onChanged: isActivationDisabled ? null : (DetectionMode? value) {
-                  if (value != null) {
-                    setState(() => _mode = value);
-                  }
-                },
-              ),
-            ),
-            SizedBox(height: 30),
-            Center(
-              child: _isCountingDown
-                  ? Text(
-                'Activating in $_countdown...',
-                style: TextStyle(fontSize: 26, color: Colors.orange),
-              )
-                  : _isArmed
-                  ? Text(
-                _isMotionDetected
-                    ? 'System Armed — Motion Detected'
-                    : 'System Armed — No Motion Detected',
-                style: TextStyle(
-                  fontSize: 24,
-                  color: _isMotionDetected ? Colors.red : Colors.blue,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              Colors.blue[50]!,
+              Colors.blue[100]!,
+            ],
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
-              )
-                  : Text(
-                'System Disarmed',
-                style: TextStyle(fontSize: 26, color: Colors.green),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('Select Detection Mode:',
+                          style: TextStyle(
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800])),
+                      SizedBox(height: 10),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _mode == DetectionMode.rest
+                                ? Colors.green[100]
+                                : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Radio<DetectionMode>(
+                            value: DetectionMode.rest,
+                            groupValue: _mode,
+                            onChanged: isActivationDisabled ? null : (value) {
+                              if (value != null) setState(() => _mode = value);
+                            },
+                            activeColor: Colors.green[800],
+                          ),
+                        ),
+                        title: Text('Rest Mode',
+                            style: TextStyle(
+                                color: Colors.blue[800],
+                                fontWeight: FontWeight.w500)),
+                        tileColor: Colors.transparent,
+                      ),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: Container(
+                          padding: EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: _mode == DetectionMode.pocket
+                                ? Colors.green[100]
+                                : Colors.blue[50],
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Radio<DetectionMode>(
+                            value: DetectionMode.pocket,
+                            groupValue: _mode,
+                            onChanged: isActivationDisabled ? null : (value) {
+                              if (value != null) setState(() => _mode = value);
+                            },
+                            activeColor: Colors.green[800],
+                          ),
+                        ),
+                        title: Text('Pocket Mode',
+                            style: TextStyle(
+                                color: Colors.blue[800],
+                                fontWeight: FontWeight.w500)),
+                        tileColor: Colors.transparent,
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            Spacer(),
-            Center(
-              child: Column(
-                children: [
-                  ElevatedButton(
-                    onPressed:
-                    isActivationDisabled ? null : _startActivationSequence,
-                    child: Text('Activate'),
-                    style: ElevatedButton.styleFrom(
-                      padding:
-                      EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                      backgroundColor: Colors.green,
-                      textStyle: TextStyle(fontSize: 18),
+              SizedBox(height: 30),
+              Center(
+                child: Card(
+                  elevation: 6,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  color: _isCountingDown
+                      ? Colors.orange[50]
+                      : _isArmed
+                      ? _isMotionDetected
+                      ? Colors.red[50]
+                      : Colors.blue[50]
+                      : Colors.green[50],
+                  child: Padding(
+                    padding: EdgeInsets.all(20),
+                    child: _isCountingDown
+                        ? Text(
+                      'Activating in $_countdown...',
+                      style: TextStyle(
+                          fontSize: 26,
+                          color: Colors.orange[800],
+                          fontWeight: FontWeight.bold),
+                    )
+                        : _isArmed
+                        ? Column(
+                      children: [
+                        Text(
+                          'SYSTEM ARMED',
+                          style: TextStyle(
+                              fontSize: 18,
+                              color: Colors.blue[800],
+                              fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          _isMotionDetected
+                              ? '🚨 MOTION DETECTED!'
+                              : '✅ No Motion',
+                          style: TextStyle(
+                              fontSize: 24,
+                              color: _isMotionDetected
+                                  ? Colors.red[800]
+                                  : Colors.green[800],
+                              fontWeight: FontWeight.bold),
+                        ),
+                      ],
+                    )
+                        : Text(
+                      'SYSTEM DISARMED',
+                      style: TextStyle(
+                          fontSize: 26,
+                          color: Colors.green[800],
+                          fontWeight: FontWeight.bold),
                     ),
                   ),
-                  SizedBox(height: 16),
-                  if (_isArmed)
-                    ElevatedButton(
-                      onPressed: _deactivateSystem,
-                      child: Text('Deactivate'),
-                      style: ElevatedButton.styleFrom(
-                        padding:
-                        EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                        backgroundColor: Colors.red,
-                        textStyle: TextStyle(fontSize: 18),
-                      ),
-                    ),
-                ],
+                ),
               ),
-            )
-          ],
+              Spacer(),
+              Center(
+                child: Column(
+                  children: [
+                    ElevatedButton(
+                      onPressed: isActivationDisabled
+                          ? null
+                          : _startActivationSequence,
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(
+                            horizontal: 40, vertical: 18),
+                        backgroundColor: Colors.green[600],
+                        disabledBackgroundColor: Colors.grey[400],
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 5,
+                        shadowColor: Colors.green[800],
+                      ),
+                      child: Text('ACTIVATE SYSTEM',
+                          style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
+                    ),
+                    SizedBox(height: 20),
+                    if (_isArmed)
+                      ElevatedButton(
+                        onPressed: _deactivateSystem,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.symmetric(
+                              horizontal: 40, vertical: 18),
+                          backgroundColor: Colors.red[600],
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 5,
+                          shadowColor: Colors.red[800],
+                        ),
+                        child: Text('DEACTIVATE SYSTEM',
+                            style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

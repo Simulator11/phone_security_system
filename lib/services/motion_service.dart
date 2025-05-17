@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:sensors_plus/sensors_plus.dart';
 import '../models/detection_mode.dart';
 import '../modules/lock_screen_camera/camera_controller_service.dart';
+import 'flashlight_service.dart';
+import 'alarm_service.dart';
 
 class MotionService {
   static StreamSubscription<AccelerometerEvent>? _subscription;
@@ -47,14 +49,22 @@ class MotionService {
               if (!_isCapturing) {
                 _isCapturing = true;
                 onMotionDetected();
+
+                // Activate all security mechanisms
                 CameraControllerService.startContinuousCapture();
+                FlashlightService.toggleFlashlight(true);
+                AlarmService.triggerAlarm();
               }
             } else {
               // 🛑 **Motion Stopped**
               if (_isCapturing) {
                 _isCapturing = false;
                 onMotionStopped();
+
+                // Deactivate all security mechanisms
                 CameraControllerService.stopContinuousCapture();
+                FlashlightService.toggleFlashlight(false);
+                AlarmService.stopAlarm();
               }
             }
           });
@@ -67,6 +77,8 @@ class MotionService {
     _subscription?.cancel();
     _calibrationTimer?.cancel();
     CameraControllerService.stopContinuousCapture();
+    FlashlightService.toggleFlashlight(false);
+    AlarmService.stopAlarm();
     _subscription = null;
     _initialX = _initialY = _initialZ = null;
   }
