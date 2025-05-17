@@ -13,6 +13,7 @@ class _HomeScreenState extends State<HomeScreen> {
   DetectionMode _mode = DetectionMode.rest;
   bool _isArmed = false;
   bool _isCountingDown = false;
+  bool _isMotionDetected = false;
   int _countdown = 10;
   Timer? _countdownTimer;
 
@@ -32,11 +33,13 @@ class _HomeScreenState extends State<HomeScreen> {
         setState(() {
           _isCountingDown = false;
           _isArmed = true;
+          _isMotionDetected = true;
         });
 
         MotionService.startDetection(
           _mode,
           onMotionDetected: _onMotionDetected,
+          onMotionStopped: _onMotionStopped,
         );
       }
     });
@@ -45,6 +48,18 @@ class _HomeScreenState extends State<HomeScreen> {
   void _onMotionDetected() {
     if (_isArmed) {
       AlarmService.triggerAlarm();
+      setState(() {
+        _isMotionDetected = true;
+      });
+    }
+  }
+
+  void _onMotionStopped() {
+    if (_isArmed) {
+      setState(() {
+        _isMotionDetected = false;
+      });
+      print("⚠️ Motion Stopped — Camera Capture Paused.");
     }
   }
 
@@ -56,6 +71,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       _isArmed = false;
       _isCountingDown = false;
+      _isMotionDetected = false;
       _countdown = 10;
     });
   }
@@ -115,8 +131,13 @@ class _HomeScreenState extends State<HomeScreen> {
               )
                   : _isArmed
                   ? Text(
-                'System Armed',
-                style: TextStyle(fontSize: 26, color: Colors.red),
+                _isMotionDetected
+                    ? 'System Armed — Motion Detected'
+                    : 'System Armed — No Motion Detected',
+                style: TextStyle(
+                  fontSize: 24,
+                  color: _isMotionDetected ? Colors.red : Colors.blue,
+                ),
               )
                   : Text(
                 'System Disarmed',
@@ -128,10 +149,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Column(
                 children: [
                   ElevatedButton(
-                    onPressed: isActivationDisabled ? null : _startActivationSequence,
+                    onPressed:
+                    isActivationDisabled ? null : _startActivationSequence,
                     child: Text('Activate'),
                     style: ElevatedButton.styleFrom(
-                      padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                      padding:
+                      EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                       backgroundColor: Colors.green,
                       textStyle: TextStyle(fontSize: 18),
                     ),
@@ -142,7 +165,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       onPressed: _deactivateSystem,
                       child: Text('Deactivate'),
                       style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                        padding:
+                        EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                         backgroundColor: Colors.red,
                         textStyle: TextStyle(fontSize: 18),
                       ),

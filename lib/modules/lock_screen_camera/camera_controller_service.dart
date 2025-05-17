@@ -1,31 +1,39 @@
 import 'package:camera/camera.dart';
 import 'dart:io';
-import 'package:path_provider/path_provider.dart';
+import 'dart:async';
+import 'dart:typed_data';
+
+import 'package:image_gallery_saver_plus/image_gallery_saver_plus.dart';
 
 class CameraControllerService {
   static CameraController? _controller;
+  static Timer? _captureTimer;
+  static bool _isCapturing = false;
 
   static Future<void> initializeCamera() async {
-    final cameras = await availableCameras();
-    final frontCamera = cameras.firstWhere(
-          (camera) => camera.lensDirection == CameraLensDirection.front,
-      orElse: () => cameras.first,
-    );
+    try {
+      final cameras = await availableCameras();
+      final frontCamera = cameras.firstWhere(
+            (camera) => camera.lensDirection == CameraLensDirection.front,
+        orElse: () => cameras.first,
+      );
 
-    _controller = CameraController(
-      frontCamera,
-      ResolutionPreset.medium,
-      enableAudio: false,
-    );
+      _controller = CameraController(
+        frontCamera,
+        ResolutionPreset.medium,
+        enableAudio: false,
+      );
 
-    await _controller?.initialize();
+      await _controller?.initialize();
+    } catch (e) {
+      print("❌ Camera Initialization Failed: $e");
+    }
   }
 
   static Future<XFile?> takePicture() async {
     if (_controller == null || !_controller!.value.isInitialized) {
       await initializeCamera();
     }
-
     if (_controller!.value.isTakingPicture) return null;
 
     try {
@@ -36,22 +44,48 @@ class CameraControllerService {
     }
   }
 
-  // ✅ New helper function for MotionService
-  static Future<void> capturePhoto() async {
+  static void startContinuousCapture() {
+    stopContinuousCapture();
+
+    _captureTimer = Timer.periodic(Duration(seconds: 3), (timer) {
+      _capturePhotoOnce();
+    });
+  }
+
+  static Future<void> _capturePhotoOnce() async {
+    if (_isCapturing) return;
+    _isCapturing = true;
+
     try {
       final picture = await takePicture();
       if (picture != null) {
-        final dir = await getApplicationDocumentsDirectory();
-        final savedPath = '${dir.path}/${DateTime.now().millisecondsSinceEpoch}.jpg';
-        final savedFile = await File(picture.path).copy(savedPath);
-        print("📸 Photo saved to: ${savedFile.path}");
+        final bytes = await File(picture.path).readAsBytes();
+        final result = await ImageGallerySaverPlus.saveImage(
+          Uint8List.fromList(bytes),
+          quality: 80,
+          name: "Security_${DateTime.now().millisecondsSinceEpoch}",
+        );
+
+        if (result.isSuccess) {
+          print("✅ Image successfully saved to gallery.");
+        } else {
+          print("❌ Failed to save image to gallery.");
+        }
       }
     } catch (e) {
-      print("❌ Failed to capture photo: $e");
+      print("❌ Failed to capture photo in background: $e");
+    } finally {
+      _isCapturing = false;
     }
   }
 
+  static void stopContinuousCapture() {
+    _captureTimer?.cancel();
+    _captureTimer = null;
+  }
+
   static void dispose() {
+    stopContinuousCapture();
     _controller?.dispose();
     _controller = null;
   }

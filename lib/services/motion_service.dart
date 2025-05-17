@@ -7,6 +7,7 @@ class MotionService {
   static StreamSubscription<AccelerometerEvent>? _subscription;
   static double? _initialX, _initialY, _initialZ;
   static Timer? _calibrationTimer;
+  static bool _isCapturing = false;
 
   static const restThreshold = 1.5;
   static const pocketThreshold = 2.5;
@@ -14,6 +15,7 @@ class MotionService {
   static void startDetection(
       DetectionMode mode, {
         required Function onMotionDetected,
+        required Function onMotionStopped,
       }) {
     _subscription?.cancel();
     _initialX = null;
@@ -26,11 +28,11 @@ class MotionService {
         _initialY = event.y;
         _initialZ = event.z;
 
-        // Delay 5 seconds to calibrate
+        // ⏳ **Calibration for 5 seconds**
         _calibrationTimer = Timer(Duration(seconds: 5), () {
           _subscription?.cancel(); // Cancel the initial subscription
 
-          // Start real monitoring
+          // ✅ **Start real monitoring**
           _subscription = accelerometerEventStream().listen((newEvent) {
             double dx = (_initialX! - newEvent.x).abs();
             double dy = (_initialY! - newEvent.y).abs();
@@ -40,9 +42,20 @@ class MotionService {
                 ? restThreshold
                 : pocketThreshold;
 
+            // 🚀 **Motion Detected**
             if (dx > threshold || dy > threshold || dz > threshold) {
-              onMotionDetected();
-              CameraControllerService.capturePhoto(); // 📸 Capture photo on motion
+              if (!_isCapturing) {
+                _isCapturing = true;
+                onMotionDetected();
+                CameraControllerService.startContinuousCapture();
+              }
+            } else {
+              // 🛑 **Motion Stopped**
+              if (_isCapturing) {
+                _isCapturing = false;
+                onMotionStopped();
+                CameraControllerService.stopContinuousCapture();
+              }
             }
           });
         });
@@ -53,6 +66,7 @@ class MotionService {
   static void stopDetection() {
     _subscription?.cancel();
     _calibrationTimer?.cancel();
+    CameraControllerService.stopContinuousCapture();
     _subscription = null;
     _initialX = _initialY = _initialZ = null;
   }
