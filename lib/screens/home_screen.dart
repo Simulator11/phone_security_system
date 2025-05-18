@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:phone_security_app/screens/settings_screen.dart';
 import '../services/motion_service.dart';
 import '../services/alarm_service.dart';
 import '../services/flashlight_service.dart';
@@ -111,6 +112,17 @@ class _HomeScreenState extends State<HomeScreen> {
             bottom: Radius.circular(20),
           ),
         ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => SettingsScreen()),
+              );
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
